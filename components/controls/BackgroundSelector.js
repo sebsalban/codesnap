@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Plus } from "lucide-react";
 import { useSnap } from "@/hooks/useSnap";
 import { BACKGROUNDS } from "@/lib/constants/backgrounds";
 
@@ -32,7 +33,7 @@ export default function BackgroundSelector() {
               transition: "box-shadow 200ms var(--ease)",
             }}
           >
-            {active ? "✓" : ""}
+            {active && <Check size={14} aria-hidden style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.6))" }} />}
           </div>
         );
       })}
@@ -59,7 +60,11 @@ export default function BackgroundSelector() {
           transition: "box-shadow 200ms var(--ease)",
         }}
       >
-        {customActive ? "✓" : "+"}
+        {customActive ? (
+          <Check size={14} aria-hidden style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.6))" }} />
+        ) : (
+          <Plus size={16} aria-hidden />
+        )}
         <input
           type="color"
           value={customColor}

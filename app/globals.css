@@ -16,6 +16,7 @@
   --accent-glow: rgba(244, 114, 182, 0.2);
 
   --success: #22C55E;
+  --warning: #FBBF24;
   --danger: #F87171;
 
   --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
@@ -48,6 +49,12 @@ a {
 
 a:hover {
   color: #fb7fc0;
+}
+
+@keyframes csSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes csPulse {

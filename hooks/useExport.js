@@ -1,30 +1,30 @@
 "use client";
 
-import { useState } from "react";
 import { useSnap } from "@/hooks/useSnap";
 import { exportAsPng, exportAsSvg, snapFilename } from "@/lib/imageExport";
 
 // Drives the download flow: idle -> loading ("Rendering…") -> done
-// ("Saved to downloads") -> idle again.
+// ("Saved to downloads") -> idle again. Status is shared via SnapContext,
+// so the panel and inline preview buttons stay in sync and an export in
+// flight blocks every surface, not just the one that started it.
 export function useExport() {
-  const { previewRef, language } = useSnap();
-  const [status, setStatus] = useState("idle");
+  const { previewRef, language, exportStatus, setExportStatus } = useSnap();
 
   const run = async (exporter) => {
-    if (status !== "idle" || !previewRef.current) return;
-    setStatus("loading");
+    if (exportStatus !== "idle" || !previewRef.current) return;
+    setExportStatus("loading");
     try {
       await exporter(previewRef.current, snapFilename(language));
-      setStatus("done");
-      setTimeout(() => setStatus("idle"), 1500);
+      setExportStatus("done");
+      setTimeout(() => setExportStatus("idle"), 1500);
     } catch (err) {
       console.error("Export failed", err);
-      setStatus("idle");
+      setExportStatus("idle");
     }
   };
 
   return {
-    status,
+    status: exportStatus,
     exportPng: () => run(exportAsPng),
     exportSvg: () => run(exportAsSvg),
   };

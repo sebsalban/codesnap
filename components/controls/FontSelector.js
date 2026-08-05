@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useSnap } from "@/hooks/useSnap";
 import { FONTS, getFont } from "@/lib/constants/fonts";
 
@@ -35,7 +36,15 @@ export default function FontSelector() {
         }}
       >
         <span style={{ fontSize: 13, fontFamily: active.family }}>{active.label}</span>
-        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>▾</span>
+        <ChevronDown
+          size={14}
+          aria-hidden
+          style={{
+            color: "var(--text-secondary)",
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 200ms var(--ease)",
+          }}
+        />
       </div>
 
       {open && (

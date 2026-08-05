@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSnap } from "@/hooks/useSnap";
 import { getFont } from "@/lib/constants/fonts";
+import { CODE_WARN_LENGTH, MAX_CODE_LENGTH } from "@/lib/constants/limits";
 
 const PLACEHOLDER = `const greeting = (name) => {
   const message = \`Hello, \${name}!\`;
@@ -29,13 +30,16 @@ export default function CodeEditor() {
     const el = e.target;
     const start = el.selectionStart;
     const end = el.selectionEnd;
-    update({ code: `${code.substring(0, start)}  ${code.substring(end)}` });
+    const next = `${code.substring(0, start)}  ${code.substring(end)}`;
+    if (next.length > MAX_CODE_LENGTH) return; // maxLength only covers typing/paste
+    update({ code: next });
     requestAnimationFrame(() => {
       el.selectionStart = el.selectionEnd = start + 2;
     });
   };
 
   return (
+    <>
     <textarea
       ref={ref}
       value={code}
@@ -44,6 +48,7 @@ export default function CodeEditor() {
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
       spellCheck={false}
+      maxLength={MAX_CODE_LENGTH}
       placeholder={PLACEHOLDER}
       style={{
         width: "100%",
@@ -62,5 +67,12 @@ export default function CodeEditor() {
         transition: "border-color 200ms var(--ease)",
       }}
     />
+    {code.length >= CODE_WARN_LENGTH && (
+      <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 6, lineHeight: 1.5 }}>
+        Long snippets slow down highlighting and export —{" "}
+        {code.length.toLocaleString()} / {MAX_CODE_LENGTH.toLocaleString()} characters.
+      </div>
+    )}
+    </>
   );
 }

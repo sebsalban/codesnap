@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Check, Link2 } from "lucide-react";
 import { useSnap } from "@/hooks/useSnap";
 import { useExport } from "@/hooks/useExport";
 import { buildShareUrl } from "@/lib/share";
@@ -234,7 +235,10 @@ export default function ControlPanel() {
         <div
           onClick={copyLink}
           style={{
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
             fontSize: 13,
             color: copied ? "var(--success)" : "var(--text-secondary)",
             cursor: "pointer",
@@ -248,7 +252,8 @@ export default function ControlPanel() {
             if (!copied) e.currentTarget.style.color = "var(--text-secondary)";
           }}
         >
-          {copied ? "Link copied ✓" : "Copy link"}
+          {copied ? <Check size={13} aria-hidden /> : <Link2 size={13} aria-hidden />}
+          {copied ? "Link copied" : "Copy link"}
         </div>
       </div>
     </div>

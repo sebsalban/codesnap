@@ -30,6 +30,9 @@ export function SnapProvider({ children }) {
   // The exportable preview node registers itself here so the export
   // buttons in the control panel can reach it from any page.
   const previewRef = useRef(null);
+  // Export status lives in context (not in useExport) so every export
+  // surface shares one idle/loading/done flow and can't double-fire.
+  const [exportStatus, setExportStatus] = useState("idle");
 
   const update = useCallback((patch) => {
     setState((prev) => ({ ...prev, ...patch }));
@@ -78,7 +81,9 @@ export function SnapProvider({ children }) {
   );
 
   return (
-    <SnapContext.Provider value={{ ...state, update, applyPreset, loadSnap, previewRef }}>
+    <SnapContext.Provider
+      value={{ ...state, update, applyPreset, loadSnap, previewRef, exportStatus, setExportStatus }}
+    >
       {children}
     </SnapContext.Provider>
   );

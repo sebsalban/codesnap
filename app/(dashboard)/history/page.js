@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import AppShell from "@/components/ui/AppShell";
+import Dialog, { DialogButton } from "@/components/ui/Dialog";
 import { useSnap } from "@/hooks/useSnap";
 import { useUser } from "@/hooks/useUser";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -42,16 +44,21 @@ const newSnapButton = {
 const iconButton = {
   width: 32,
   height: 32,
+  padding: 0,
   borderRadius: 8,
   border: "1px solid var(--border)",
+  background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: 13,
   color: "var(--text-secondary)",
   cursor: "pointer",
   transition: "border-color 200ms var(--ease), color 200ms var(--ease)",
 };
+
+// Snaps are fetched a page at a time so a large history doesn't arrive
+// in one unbounded query.
+const PAGE_SIZE = 50;
 
 function CenteredNotice({ title, body, children }) {
   return (
@@ -145,8 +152,9 @@ function SnapCard({ row, onLoad, onDelete }) {
           <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>{relativeDate(row.created_at)}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <div
+          <button
             title="Load"
+            aria-label={`Load "${row.title || "Untitled snap"}" into the editor`}
             onClick={onLoad}
             style={iconButton}
             onMouseEnter={(e) => {
@@ -158,10 +166,11 @@ function SnapCard({ row, onLoad, onDelete }) {
               e.currentTarget.style.color = "var(--text-secondary)";
             }}
           >
-            ↗
-          </div>
-          <div
+            <ArrowUpRight size={15} aria-hidden />
+          </button>
+          <button
             title="Delete"
+            aria-label={`Delete "${row.title || "Untitled snap"}"`}
             onClick={onDelete}
             style={iconButton}
             onMouseEnter={(e) => {
@@ -173,8 +182,8 @@ function SnapCard({ row, onLoad, onDelete }) {
               e.currentTarget.style.color = "var(--text-secondary)";
             }}
           >
-            ✕
-          </div>
+            <Trash2 size={14} aria-hidden />
+          </button>
         </div>
       </div>
     </div>
@@ -186,18 +195,50 @@ function HistoryContent() {
   const { loadSnap } = useSnap();
   const { user, loading: userLoading, supabase } = useUser();
   const [snaps, setSnaps] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null); // row awaiting confirmation
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const fetchPage = useCallback(
+    async (from) => {
+      const { data, error } = await supabase
+        .from("snaps")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) {
+        console.error("Failed to load snaps", error);
+        return { rows: [], more: false };
+      }
+      const rows = data || [];
+      return { rows, more: rows.length === PAGE_SIZE };
+    },
+    [supabase]
+  );
 
   useEffect(() => {
     if (!supabase || !user) return;
-    supabase
-      .from("snaps")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error("Failed to load snaps", error);
-        setSnaps(data || []);
-      });
-  }, [supabase, user]);
+    let cancelled = false;
+    fetchPage(0).then(({ rows, more }) => {
+      if (cancelled) return;
+      setSnaps(rows);
+      setHasMore(more);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user, fetchPage]);
+
+  const loadMore = async () => {
+    if (loadingMore || !snaps) return;
+    setLoadingMore(true);
+    const { rows, more } = await fetchPage(snaps.length);
+    setSnaps((prev) => [...(prev || []), ...rows]);
+    setHasMore(more);
+    setLoadingMore(false);
+  };
 
   if (!isSupabaseConfigured()) {
     return (
@@ -244,14 +285,23 @@ function HistoryContent() {
     );
   }
 
-  const remove = async (row) => {
-    if (!window.confirm(`Delete "${row.title || "Untitled snap"}"? This can't be undone.`)) return;
-    const { error } = await supabase.from("snaps").delete().eq("id", row.id);
+  const requestDelete = (row) => {
+    setDeleteError(null);
+    setPendingDelete(row);
+  };
+
+  const confirmDelete = async () => {
+    if (deleting || !pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const { error } = await supabase.from("snaps").delete().eq("id", pendingDelete.id);
+    setDeleting(false);
     if (error) {
-      window.alert(`Could not delete snap: ${error.message}`);
+      setDeleteError(`Could not delete snap: ${error.message}`);
       return;
     }
-    setSnaps((prev) => prev.filter((s) => s.id !== row.id));
+    setSnaps((prev) => prev.filter((s) => s.id !== pendingDelete.id));
+    setPendingDelete(null);
   };
 
   const load = (row) => {
@@ -267,16 +317,16 @@ function HistoryContent() {
             Your snaps
           </div>
           <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
-            {snaps === null ? "Loading…" : `${snaps.length} saved · synced to your account`}
+            {snaps === null ? "Loading…" : `${snaps.length}${hasMore ? "+" : ""} saved · synced to your account`}
           </div>
         </div>
         <Link
           href="/"
-          style={newSnapButton}
+          style={{ ...newSnapButton, display: "inline-flex", alignItems: "center", gap: 7 }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent-hover)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "var(--accent)")}
         >
-          + New snap
+          <Plus size={15} aria-hidden /> New snap
         </Link>
       </div>
 
@@ -287,10 +337,55 @@ function HistoryContent() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
           {(snaps || []).map((row) => (
-            <SnapCard key={row.id} row={row} onLoad={() => load(row)} onDelete={() => remove(row)} />
+            <SnapCard key={row.id} row={row} onLoad={() => load(row)} onDelete={() => requestDelete(row)} />
           ))}
         </div>
       )}
+
+      {hasMore && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 28 }}>
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            style={{
+              background: "transparent",
+              color: "var(--accent)",
+              border: "1px solid var(--accent)",
+              fontFamily: "var(--font-body)",
+              fontSize: 14,
+              fontWeight: 500,
+              padding: "10px 28px",
+              borderRadius: 6,
+              cursor: loadingMore ? "default" : "pointer",
+              opacity: loadingMore ? 0.6 : 1,
+              transition: "background 200ms var(--ease)",
+            }}
+            onMouseEnter={(e) => {
+              if (!loadingMore) e.currentTarget.style.background = "var(--accent-soft)";
+            }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            {loadingMore ? "Loading…" : "Load more"}
+          </button>
+        </div>
+      )}
+
+      <Dialog
+        open={pendingDelete !== null}
+        onClose={() => !deleting && setPendingDelete(null)}
+        title="Delete this snap?"
+        body={`"${pendingDelete?.title || "Untitled snap"}" will be removed from your history. This can't be undone.`}
+        error={deleteError}
+      >
+        <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+          <DialogButton variant="ghost" disabled={deleting} onClick={() => setPendingDelete(null)}>
+            Cancel
+          </DialogButton>
+          <DialogButton variant="danger" disabled={deleting} onClick={confirmDelete}>
+            {deleting ? "Deleting…" : "Delete"}
+          </DialogButton>
+        </div>
+      </Dialog>
     </div>
   );
 }

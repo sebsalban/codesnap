@@ -1,13 +1,15 @@
 "use client";
 
+import { Check, Download, LoaderCircle } from "lucide-react";
+
 const LABELS = {
-  idle: { text: "Download PNG", icon: "↓", bg: "var(--accent)", anim: "none" },
-  loading: { text: "Rendering…", icon: "◌", bg: "var(--accent)", anim: "csPulse 900ms infinite" },
-  done: { text: "Saved to downloads", icon: "✓", bg: "var(--success)", anim: "none" },
+  idle: { text: "Download PNG", Icon: Download, bg: "var(--accent)", anim: "none" },
+  loading: { text: "Rendering…", Icon: LoaderCircle, bg: "var(--accent)", anim: "csSpin 900ms linear infinite" },
+  done: { text: "Saved to downloads", Icon: Check, bg: "var(--success)", anim: "none" },
 };
 
 export default function ExportButton({ status, onClick }) {
-  const { text, icon, bg, anim } = LABELS[status] || LABELS.idle;
+  const { text, Icon, bg, anim } = LABELS[status] || LABELS.idle;
 
   return (
     <button
@@ -36,7 +38,7 @@ export default function ExportButton({ status, onClick }) {
         if (status === "idle") e.currentTarget.style.background = "var(--accent)";
       }}
     >
-      <span style={{ animation: anim }}>{icon}</span>
+      <Icon size={16} aria-hidden style={{ animation: anim, flexShrink: 0 }} />
       {text}
     </button>
   );

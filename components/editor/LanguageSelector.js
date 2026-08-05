@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useSnap } from "@/hooks/useSnap";
 import { LANGUAGES } from "@/lib/constants/languages";
 
@@ -31,19 +32,18 @@ export default function LanguageSelector() {
           </option>
         ))}
       </select>
-      <span
+      <ChevronDown
+        size={14}
+        aria-hidden
         style={{
           position: "absolute",
           right: 12,
           top: "50%",
           transform: "translateY(-50%)",
           pointerEvents: "none",
-          fontSize: 11,
           color: "var(--text-secondary)",
         }}
-      >
-        ▾
-      </span>
+      />
     </div>
   );
 }
